@@ -28,7 +28,7 @@ if not SSTATS_API_KEY:
 print("✅ API-ключ получен из переменной окружения.\n")
 
 BASE_URL = "https://api.sstats.net"
-BASE_DIR = "/content/FootballAnalyzer"
+BASE_DIR = "FootballAnalyzer"
 os.makedirs(BASE_DIR, exist_ok=True)
 CACHE_DB   = os.path.join(BASE_DIR, "sstats_cache.db")
 HISTORY_DB = os.path.join(BASE_DIR, "capper_history.db")   # 🆕
