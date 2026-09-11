@@ -39,7 +39,7 @@ HISTORY_DB = os.path.join(BASE_DIR, "capper_history.db")   # 🆕
 DEMO_MODE            = False
 LOOKAHEAD_HOURS      = 24
 CACHE_TTL_HOURS      = 6
-MAX_CONCURRENT_API   = 10
+MAX_CONCURRENT_API   = 25
 
 # 🆕 Настройки истории
 RESOLVE_MIN_AGE_H     = 3     # прогноз разрешается, если с kickoff прошло ≥3ч
@@ -1254,16 +1254,26 @@ async def main():
         all_preds, all_analyses = [], []
         league_ids = list(LEAGUES.keys())
 
-        with tqdm(total=len(league_ids), desc="📊 Анализ лиг",
-                  unit="лига", colour="green") as pbar:
-            for lid in league_ids:
+        # 🆕 Параллельная обработка лиг (по 5 одновременно)
+        LEAGUE_PARALLEL = 5
+        league_sem = asyncio.Semaphore(LEAGUE_PARALLEL)
+
+        async def _process_one(lid):
+            async with league_sem:
                 try:
-                    pbar.set_description(f"📡 {LEAGUES[lid][0]}")
-                    analyses, preds = await analyzer.analyze_league(lid)
-                    all_analyses.extend(analyses)
-                    all_preds.extend(preds)
+                    return lid, await analyzer.analyze_league(lid)
                 except Exception as e:
                     log.error(f"{LEAGUES[lid][0]}: {e}")
+                    return lid, ([], [])
+
+        with tqdm(total=len(league_ids), desc="📊 Анализ лиг",
+                  unit="лига", colour="green") as pbar:
+            tasks = [_process_one(lid) for lid in league_ids]
+            for coro in asyncio.as_completed(tasks):
+                lid, (analyses, preds) = await coro
+                pbar.set_description(f"📡 {LEAGUES[lid][0]}")
+                all_analyses.extend(analyses)
+                all_preds.extend(preds)
                 pbar.update(1)
 
         print(f"\n{'═' * 80}")
