@@ -1,0 +1,12 @@
+# Кэш SStats API — слишком большой, восстанавливается автоматически
+FootballAnalyzer/sstats_cache.db
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Временные файлы
+*.log
+.DS_Store
