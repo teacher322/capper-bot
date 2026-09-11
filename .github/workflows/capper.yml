@@ -1,0 +1,37 @@
+name: Capper Bot Auto-Run
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+jobs:
+  run-capper:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Скачать код
+        uses: actions/checkout@v4
+
+      - name: Установить Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Установить зависимости
+        run: pip install -r requirements.txt
+
+      - name: Запустить бота
+        env:
+          SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
+        run: python capper.py
+
+      - name: Сохранить историю как артефакт
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: capper-history-db
+          path: FootballAnalyzer/capper_history.db
+          retention-days: 90
