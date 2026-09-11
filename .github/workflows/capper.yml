@@ -5,14 +5,21 @@ on:
     - cron: '*/30 * * * *'
   workflow_dispatch:
 
+# 🆕 Даём workflow право коммитить обратно в репозиторий
+permissions:
+  contents: write
+
 jobs:
   run-capper:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 60   # 🆕 подняли с 20 → 60 (на случай медленного дня)
 
     steps:
       - name: Скачать код
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Установить Python
         uses: actions/setup-python@v5
@@ -28,6 +35,18 @@ jobs:
           SSTATS_API_KEY: ${{ secrets.SSTATS_API_KEY }}
         run: python capper.py
 
+      # 🆕 Сохраняем базу истории обратно в репозиторий
+      - name: Сохранить базу в репозиторий
+        if: always()
+        run: |
+          git config user.name "capper-bot"
+          git config user.email "capper-bot@users.noreply.github.com"
+          mkdir -p FootballAnalyzer
+          git add FootballAnalyzer/capper_history.db || true
+          git add FootballAnalyzer/sstats_cache.db || true
+          git diff --staged --quiet || git commit -m "auto: history update [skip ci]"
+          git push || true
+
       - name: Сохранить историю как артефакт
         if: always()
         uses: actions/upload-artifact@v4
@@ -35,3 +54,4 @@ jobs:
           name: capper-history-db
           path: FootballAnalyzer/capper_history.db
           retention-days: 90
+          if-no-files-found: warn
