@@ -42,8 +42,8 @@ jobs:
           git config user.name "capper-bot"
           git config user.email "capper-bot@users.noreply.github.com"
           mkdir -p FootballAnalyzer
+          # Кэш sstats_cache.db НЕ коммитим — он слишком большой (>100MB)
           git add FootballAnalyzer/capper_history.db || true
-          git add FootballAnalyzer/sstats_cache.db || true
           git diff --staged --quiet || git commit -m "auto: history update [skip ci]"
           git push || true
 
