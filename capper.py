@@ -1286,4 +1286,5 @@ async def main():
             await print_history_report(history)
 
 
-await main()
+if __name__ == "__main__":
+    asyncio.run(main())
