@@ -740,17 +740,21 @@ class CapperAnalyzer:
             "away": p_a_raw * scale * 100.0,
         }
 
-    async def analyze_match(self, game, league_id, league_name, league_tier, table):
+    async def analyze_match(self, game, league_id, league_name, league_tier, table,
+                            debug=False):
         try:
             gid = str(game.get('id', ''))
             if not gid: return None
             match_time = self._parse_time(game.get('date', ''),
                                           date_utc=game.get('dateUtc'))
-            if not match_time: return None
+            if not match_time:
+                if debug: log.info(f"    ❌ {gid}: parse_time None")
+                return None
 
             if not DEMO_MODE:
                 now = datetime.now(timezone.utc)
                 if not (now <= match_time <= now + timedelta(hours=LOOKAHEAD_HOURS)):
+                    if debug: log.info(f"    ⏱ {gid}: вне окна (match={match_time}, now={now})")
                     return None
 
             home_data = game.get('homeTeam') or game.get('home') or {}
@@ -766,8 +770,12 @@ class CapperAnalyzer:
                 (odds.over25 > 0 and odds.under25 > 0) or
                 (odds.btts_yes > 0 and odds.btts_no > 0)
             )
-            if not has_any_odds: return None
-            if odds.overround_1x2 > MAX_OVERROUND: return None
+            if not has_any_odds:
+                if debug: log.info(f"    💰 {gid}: нет кэфов")
+                return None
+            if odds.overround_1x2 > MAX_OVERROUND:
+                if debug: log.info(f"    📈 {gid}: overround {odds.overround_1x2:.3f} > {MAX_OVERROUND}")
+                return None
 
             is_derby = self._is_derby(home_data.get('name', ''),
                                       away_data.get('name', ''))
@@ -777,7 +785,9 @@ class CapperAnalyzer:
             if home_stats.form_string:  dq += 0.10
             if away_stats.form_string:  dq += 0.10
             if is_derby: dq *= 0.9
-            if dq < MIN_DATA_QUALITY: return None
+            if dq < MIN_DATA_QUALITY:
+                if debug: log.info(f"    📊 {gid}: DQ={dq:.2f} < {MIN_DATA_QUALITY}")
+                return None
 
             analysis = MatchAnalysis(
                 fixture_id=gid, time=match_time,
@@ -787,9 +797,14 @@ class CapperAnalyzer:
                 odds=odds, is_derby=is_derby, data_quality=dq,
             )
             analysis.predictions = self._generate_predictions(analysis)
+
+            if debug:
+                log.info(f"    ✅ {gid}: DQ={dq:.2f}, overround={odds.overround_1x2:.3f}, "
+                         f"прогнозов={len(analysis.predictions)}")
+
             return analysis
         except Exception as e:
-            log.debug(f"analyze_match error: {e}")
+            log.warning(f"  analyze_match error для {gid}: {e}")
             return None
 
     def _generate_predictions(self, a: MatchAnalysis) -> List[Prediction]:
@@ -896,21 +911,44 @@ class CapperAnalyzer:
             s += 5
         return max(0.0, min(100.0, s))
 
-    async def analyze_league(self, league_id):
+     async def analyze_league(self, league_id):
         info = LEAGUES.get(league_id)
-        if not info: return [], []
+        if not info:
+            return [], []
         name, _, tier = info
         year = await self.get_max_available_year(league_id)
         games = await self.get_games(league_id, year)
-        if not games: return [], []
-        if DEMO_MODE: games = games[:100]
+        if not games:
+            return [], []
+        if DEMO_MODE:
+            games = games[:100]
         table = await self.get_table(league_id, year)
 
-        tasks = [self.analyze_match(g, league_id, name, tier, table) for g in games]
+        now = datetime.now(timezone.utc)
+        # Считаем сколько матчей в принципе в окне
+        in_window = 0
+        for g in games:
+            mt = self._parse_time(g.get('date', ''), date_utc=g.get('dateUtc'))
+            if mt and now <= mt <= now + timedelta(hours=LOOKAHEAD_HOURS):
+                in_window += 1
+
+        # Включаем debug-лог только если в окне 1-10 матчей (чтобы не спамить)
+        debug_on = 0 < in_window <= 10
+
+        tasks = [self.analyze_match(g, league_id, name, tier, table, debug=debug_on)
+                 for g in games]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        analyses = [r for r in results if isinstance(r, MatchAnalysis) and r.predictions]
-        preds = [p for a in analyses for p in a.predictions]
-        return analyses, preds
+        analyses = [r for r in results if isinstance(r, MatchAnalysis)]
+        with_preds = [a for a in analyses if a.predictions]
+        preds = [p for a in with_preds for p in a.predictions]
+
+        if in_window > 0:
+            log.info(f"  📊 {name}: {in_window} в окне → "
+                     f"{len(analyses)} прошли фильтры → "
+                     f"{len(with_preds)} с прогнозами → "
+                     f"{len(preds)} прогнозов")
+
+        return with_preds, preds
 
     def print_predictions(self, all_preds: List[Prediction], top_n=25):
         if not all_preds:
