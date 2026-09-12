@@ -528,7 +528,8 @@ class CapperAnalyzer:
     async def get_max_available_year(self, league_id):
         current_year = datetime.now(timezone.utc).year
         now = datetime.now(timezone.utc)
-        years_to_check = [current_year - 1, current_year, current_year + 1, current_year + 2]
+        # 🆕 Сначала проверяем наиболее вероятные годы
+        years_to_check = [current_year, current_year + 1, current_year - 1, current_year + 2]
 
         best_year = None
         best_future_count = 0
