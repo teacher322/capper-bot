@@ -58,9 +58,9 @@ MAX_ODDS          = 4.50
 MAX_KELLY         = 8.0
 MAX_OVERROUND     = 1.10
 
-FORM_WEIGHT       = 0.30
-ODDS_WEIGHT       = 0.50
-POISSON_WEIGHT    = 0.20
+FORM_WEIGHT       = 0.00
+ODDS_WEIGHT       = 0.70
+POISSON_WEIGHT    = 0.30
 FORM_XG_WEIGHT    = 0.15
 
 _FACT = tuple(float(factorial(i)) for i in range(12))
@@ -184,11 +184,13 @@ def normalize_odds(home, draw, away) -> Optional[Tuple[float, float, float]]:
     return (1/h)/overround*100, (1/d)/overround*100, (1/a)/overround*100
 
 def value_rating(probability, odds):
-    if odds <= 0: return "⚠️ НИЗКАЯ"
-    fair = 100 / probability if probability > 0 else 999
-    edge = (fair - odds) / odds * 100
-    if edge > 15:   return "💎 ВЫСОКАЯ"
-    elif edge > 5:  return "✅ СРЕДНЯЯ"
+    if odds <= 0:
+        return "⚠️ НИЗКАЯ"
+    ev = (probability / 100.0) * odds - 1.0
+    if ev > 0.05:    # EV > +5%
+        return "💎 ВЫСОКАЯ"
+    elif ev > 0.0:   # 0 < EV < 5%
+        return "✅ СРЕДНЯЯ"
     return "⚠️ НИЗКАЯ"
 
 def kelly_stake(prob, odds, fraction=0.25):
