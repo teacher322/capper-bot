@@ -499,7 +499,7 @@ class CapperAnalyzer:
         cached = await self._cache_get(cache_key)
         if cached:
             return cached
-        data = await self._fetch_api("Games/list", {"league": league_id, "Year": year})
+        data = await self._fetch_api("Games/list", {"leagueId": league_id, "Year": year})
         games = data.get('data', []) if isinstance(data, dict) else []
         if games:
             await self._cache_set(cache_key, games)
@@ -507,7 +507,7 @@ class CapperAnalyzer:
 
     # 🆕 Fresh (без кэша) — нужен для resolve/closing
     async def get_games_fresh(self, league_id, year):
-        data = await self._fetch_api("Games/list", {"league": league_id, "Year": year})
+        data = await self._fetch_api("Games/list", {"leagueId": league_id, "Year": year})
         games = data.get('data', []) if isinstance(data, dict) else []
         if games:
             await self._cache_set(f"games_{league_id}_{year}", games)
@@ -519,7 +519,7 @@ class CapperAnalyzer:
         if cached:
             return cached
         data = await self._fetch_api("Games/season-table",
-                                     {"league": league_id, "Year": year})
+                                     {"leagueId": league_id, "Year": year})
         table = data.get('data', data) if isinstance(data, dict) else {}
         if table:
             await self._cache_set(cache_key, table)
