@@ -39,7 +39,7 @@ HISTORY_DB = os.path.join(BASE_DIR, "capper_history.db")   # 🆕
 DEMO_MODE            = False
 LOOKAHEAD_HOURS      = 24
 CACHE_TTL_HOURS      = 6
-MAX_CONCURRENT_API   = 25
+MAX_CONCURRENT_API   = 5
 
 # 🆕 Настройки истории
 RESOLVE_MIN_AGE_H     = 3     # прогноз разрешается, если с kickoff прошло ≥3ч
@@ -470,13 +470,14 @@ class CapperAnalyzer:
         safe_params = {k: v for k, v in params.items() if k.lower() != 'apikey'}
 
         async with self.sem:
-            for attempt in range(4):
+            for attempt in range(6):
                 try:
                     async with self.session.get(url, params=params, timeout=20) as resp:
                         if resp.status == 200:
                             return await resp.json()
                         elif resp.status == 429:
-                            wait = 2 ** attempt + np.random.uniform(0, 0.5)
+                            # 🆕 Более длинные паузы, чтобы не долбить API
+                            wait = 2 ** attempt + np.random.uniform(3, 6)
                             tqdm.write(f"   ⏳ Rate limit, ждём {wait:.1f}с...")
                             await asyncio.sleep(wait)
                         elif resp.status in (500, 502, 503, 504):
@@ -526,45 +527,23 @@ class CapperAnalyzer:
         return table
 
     async def get_max_available_year(self, league_id):
-        current_year = datetime.now(timezone.utc).year
+        """
+        Упрощённый поиск года: проверяем текущий, потом следующий.
+        Экономит 50-75% API-запросов по сравнению с перебором 4 лет.
+        """
         now = datetime.now(timezone.utc)
-        # 🆕 Сначала проверяем наиболее вероятные годы
-        years_to_check = [current_year, current_year + 1, current_year - 1, current_year + 2]
+        current_year = now.year
 
-        best_year = None
-        best_future_count = 0
-        latest_match_date = None
-        debug_info = []
-
-        for year in years_to_check:
+        for year in (current_year, current_year + 1):
             games = await self.get_games(league_id, year)
-            n_games = len(games) if games else 0
-            future_count = 0
-            latest_date = None
-            if games:
-                for g in games:
-                    mt = self._parse_time(g.get('date', ''), date_utc=g.get('dateUtc'))
-                    if mt:
-                        if mt > now:
-                            future_count += 1
-                        if latest_date is None or mt > latest_date:
-                            latest_date = mt
-            debug_info.append(f"{year}:{n_games}g/{future_count}f")
-            if games and n_games > 0:
-                if future_count > best_future_count:
-                    best_future_count = future_count
-                    best_year = year
-                    latest_match_date = latest_date
-                elif future_count == 0 and best_future_count == 0:
-                    if latest_date and (latest_match_date is None or latest_date > latest_match_date):
-                        latest_match_date = latest_date
-                        best_year = year
-
-        league_name = LEAGUES.get(league_id, ("?",))[0]
-        log.info(f"  🔎 {league_name} (id={league_id}): "
-                 f"{' | '.join(debug_info)} → выбрали {best_year}")
-
-        return best_year if best_year is not None else current_year + 1
+            if not games:
+                continue
+            # Есть ли будущие матчи в этом году?
+            for g in games:
+                mt = self._parse_time(g.get('date', ''), date_utc=g.get('dateUtc'))
+                if mt and mt > now:
+                    return year
+        return current_year
 
     def _parse_time(self, date_str, date_utc=None) -> Optional[datetime]:
         if date_utc is not None:
@@ -1265,7 +1244,7 @@ async def main():
         league_ids = list(LEAGUES.keys())
 
         # 🆕 Параллельная обработка лиг (по 5 одновременно)
-        LEAGUE_PARALLEL = 5
+        LEAGUE_PARALLEL = 2
         league_sem = asyncio.Semaphore(LEAGUE_PARALLEL)
 
         async def _process_one(lid):
