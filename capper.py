@@ -507,7 +507,7 @@ class CapperAnalyzer:
 
     # 🆕 Fresh (без кэша) — нужен для resolve/closing
     async def get_games_fresh(self, league_id, year):
-        data = await self._fetch_api("Games/list", {"leagueId": league_id, "Year": year})
+        data = await self._fetch_api("Games/list", {"league": league_id, "Year": year})
         games = data.get('data', []) if isinstance(data, dict) else []
         if games:
             await self._cache_set(f"games_{league_id}_{year}", games)
