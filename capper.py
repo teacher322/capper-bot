@@ -50,8 +50,8 @@ HISTORY_ENABLED       = True
 # ═══════════════════════════════════════════════════════════
 # ПОРОГИ
 # ═══════════════════════════════════════════════════════════
-STRONG_THRESHOLD  = 74
-MEDIUM_THRESHOLD  = 65
+STRONG_THRESHOLD  = 68
+MEDIUM_THRESHOLD  = 55
 MIN_DATA_QUALITY  = 0.40
 MIN_ODDS          = 1.30
 MAX_ODDS          = 4.50
@@ -74,15 +74,14 @@ LEAGUES = {
     140: ("La Liga","ESP",1), 141: ("La Liga 2","ESP",2), 142: ("Primera Fed","ESP",3),
     78: ("Bundesliga","GER",1), 79: ("Bundesliga 2","GER",2), 80: ("3. Liga","GER",3),
     135: ("Serie A","ITA",1), 136: ("Serie B","ITA",2), 137: ("Serie C","ITA",3),
-    61: ("Ligue 1","FRA",1), 62: ("Ligue 2","FRA",2), 63: ("National","FRA",3),
+    61: ("Ligue 1","FRA",1), 63: ("National","FRA",3),
     94: ("Primeira Liga","POR",2), 88: ("Eredivisie","NED",2), 89: ("Eerste Divisie","NED",3),
-    144: ("Jupiler Pro","BEL",2), 154: ("Challenger Pro","BEL",3),
-    203: ("Super Lig","TUR",2), 169: ("Super League","GRE",2), 235: ("Super League","SUI",3),
-    179: ("Premiership","SCO",2), 106: ("Ekstraklasa","POL",3), 157: ("Ukr Prem","UKR",3),
+    144: ("Jupiler Pro","BEL",2), 203: ("Super Lig","TUR",2), 235: ("Super League","SUI",3),
+    179: ("Premiership","SCO",2), 106: ("Ekstraklasa","POL",3),
     103: ("Allsvenskan","SWE",3), 119: ("Eliteserien","NOR",3), 113: ("Superliga","DEN",3),
     71: ("Brasileirao A","BRA",1), 72: ("Brasileirao B","BRA",2),
     128: ("Liga Profesional","ARG",1), 129: ("Primera Nacional","ARG",2),
-    253: ("MLS","USA",1), 263: ("USL Champ","USA",2), 264: ("Liga MX","MEX",1),
+    253: ("MLS","USA",1), 263: ("USL Champ","USA",2),
     98: ("J1 League","JPN",2), 99: ("J2 League","JPN",3), 292: ("K League 1","KOR",2),
     2: ("UCL","EU",1), 3: ("UEL","EU",1), 848: ("UECL","EU",1),
     5: ("FA Cup","ENG",2), 6: ("EFL Cup","ENG",2),
