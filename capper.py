@@ -533,27 +533,36 @@ class CapperAnalyzer:
         best_year = None
         best_future_count = 0
         latest_match_date = None
+        debug_info = []
 
         for year in years_to_check:
             games = await self.get_games(league_id, year)
-            if not games:
-                continue
+            n_games = len(games) if games else 0
             future_count = 0
             latest_date = None
-            for g in games:
-                mt = self._parse_time(g.get('date', ''), date_utc=g.get('dateUtc'))
-                if mt:
-                    if mt > now: future_count += 1
-                    if latest_date is None or mt > latest_date:
-                        latest_date = mt
-            if future_count > best_future_count:
-                best_future_count = future_count
-                best_year = year
-                latest_match_date = latest_date
-            elif future_count == 0 and best_future_count == 0:
-                if latest_date and (latest_match_date is None or latest_date > latest_match_date):
-                    latest_match_date = latest_date
+            if games:
+                for g in games:
+                    mt = self._parse_time(g.get('date', ''), date_utc=g.get('dateUtc'))
+                    if mt:
+                        if mt > now:
+                            future_count += 1
+                        if latest_date is None or mt > latest_date:
+                            latest_date = mt
+            debug_info.append(f"{year}:{n_games}g/{future_count}f")
+            if games and n_games > 0:
+                if future_count > best_future_count:
+                    best_future_count = future_count
                     best_year = year
+                    latest_match_date = latest_date
+                elif future_count == 0 and best_future_count == 0:
+                    if latest_date and (latest_match_date is None or latest_date > latest_match_date):
+                        latest_match_date = latest_date
+                        best_year = year
+
+        league_name = LEAGUES.get(league_id, ("?",))[0]
+        log.info(f"  🔎 {league_name} (id={league_id}): "
+                 f"{' | '.join(debug_info)} → выбрали {best_year}")
+
         return best_year if best_year is not None else current_year + 1
 
     def _parse_time(self, date_str, date_utc=None) -> Optional[datetime]:
