@@ -911,7 +911,7 @@ class CapperAnalyzer:
             s += 5
         return max(0.0, min(100.0, s))
 
-     async def analyze_league(self, league_id):
+    async def analyze_league(self, league_id):
         info = LEAGUES.get(league_id)
         if not info:
             return [], []
